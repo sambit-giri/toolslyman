@@ -1,0 +1,7 @@
+numpy
+scipy
+matplotlib
+tqdm
+astropy
+tools21cm
+pytest
