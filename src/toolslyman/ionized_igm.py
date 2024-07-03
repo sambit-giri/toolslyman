@@ -38,14 +38,16 @@ def make_zion_field(filenames_or_dict, xion_thres=0.99, file_redshifts=None, rea
         xfrac_reds = file_redshifts
         xfrac_dict = {}
         print('Reading ionization data...')
-        for ii, zi in tqdm(enumerate(xfrac_reds)):
+        for ii in tqdm(range(len(xfrac_reds))):
+            zi = xfrac_reds[ii]
             xfrac_dict[zi] = reading_function(filenames_or_dict[ii])
         print('...done')
         
     print('Making the z_ion field...')
     zion = np.ones_like(xfrac_dict[xfrac_reds[0]])
     xfrac_reds = np.sort(xfrac_reds)
-    for ii, zi in tqdm(enumerate(xfrac_reds)):
+    for ii in tqdm(range(len(xfrac_reds))):
+        zi = xfrac_reds[ii]
         xi = xfrac_dict[zi]
         zion[xi >= xion_thres] = zi
     print('...done')
@@ -72,12 +74,13 @@ def value_at_zion(value_dict, z_ion):
     reds = np.sort(np.array(list(value_dict.keys())))
     value_ion = np.zeros_like(value_dict[reds[0]])
     print('Making the field with values at the redshift of ionization...')
-    for ii, zi in tqdm(enumerate(reds)):
+    for ii in tqdm(range(len(reds))):
+        zi = reds[ii]
         value_ion[zi == z_ion] = value_dict[zi][zi == z_ion]
     print('...done')
     return value_ion
 
-def gas_temp_inside_ionized_igm_single(z, dens, z_ion, dens_ion, cosmo=None):
+def gas_temp_inside_ionized_igm_single(z, dens, xfrac, z_ion, dens_ion, cosmo=None, xion_thres=0.99):
     """
     Approximate temperature of the ionized regions using the fit from McQuinn & Upton Sanderbeck (2015).
 
@@ -114,10 +117,16 @@ def gas_temp_inside_ionized_igm_single(z, dens, z_ion, dens_ion, cosmo=None):
     Tlim = 1.775*L*1e4*units.K
     gamma = 1.7
 
+    if dens.min()<0: 
+        print('As negative values were found for dens, we are assuming dens and dens_ion to be overdensities.')
+        dens = (1+dens)
+        dens_ion = (1+dens_ion)
     Tkgamma = Tion_I**gamma * ((L/L_ion)**3 * dens/dens_ion)**(2*gamma/3) * np.exp(L**2.5) / np.exp(L_ion**2.5) + Tlim**gamma * dens/dens.mean(dtype=np.float64)
-    return Tkgamma**(1/gamma)
+    Tk = Tkgamma**(1/gamma)
+    Tk[xfrac<0.01] = 200*units.K
+    return Tk
 
-def gas_temp_inside_ionized_igm(dens_dict, z_ion=None, dens_ion=None, xfrac_dict=None, xion_thres=0.99, cosmo=None):
+def gas_temp_inside_ionized_igm(dens_dict, xfrac_dict, z_ion=None, dens_ion=None, xion_thres=0.99, cosmo=None):
     """
     Approximate temperature of the ionized regions using the fit from McQuinn & Upton Sanderbeck (2015).
 
@@ -125,6 +134,9 @@ def gas_temp_inside_ionized_igm(dens_dict, z_ion=None, dens_ion=None, xfrac_dict
     -----------
     dens_dict : dict
         A dictionary containing density fields with redshifts as keys.
+    
+    xfrac_dict : dict
+        A dictionary containing ionisation fields with redshifts as keys.
         
     z_ion : ndarray, optional
         The redshift of ionization field. If None, it will be created from xfrac_dict.
@@ -150,21 +162,28 @@ def gas_temp_inside_ionized_igm(dens_dict, z_ion=None, dens_ion=None, xfrac_dict
         print('Assuming Planck18 cosmology.')
         cosmo = Planck18
 
-    assert z_ion is not None or xfrac_dict is not None, "Either provide z_ion or xfrac_dict to construct z_ion."
-    
     if z_ion is None:
         z_ion = make_zion_field(xfrac_dict, xion_thres=xion_thres)
     if dens_ion is None:
         dens_ion = value_at_zion(dens_dict, z_ion)
+
+    if dens_ion.min()<0: 
+        print('As negative values were found for dens_ion, we are assuming dens_dict and dens_ion to be overdensities.')
+        dens_ion = (1+dens_ion)
     
     reds = np.sort(np.array(list(dens_dict.keys())))
     print('Estimating the temperature inside ionized IGM at different redshifts...')
     temp_dict = {}
-    for ii, zi in tqdm(enumerate(reds)):
-        Tki = gas_temp_inside_ionized_igm_single(zi, dens_dict[zi], z_ion, dens_ion, cosmo=cosmo)
+    for ii in tqdm(range(len(reds))):
+        zi = reds[ii]
+        xfrac = xfrac_dict[zi]
+        dens = dens_dict[zi]
+        if dens.min()<0: 
+            dens = (1+dens)
+        Tki = gas_temp_inside_ionized_igm_single(zi, dens, xfrac, z_ion, dens_ion, cosmo=cosmo)
         temp_dict[zi] = Tki 
     print('...done')
-    
+
     return temp_dict
 
 
