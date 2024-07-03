@@ -137,7 +137,7 @@ def lyA_scattering_cross_section(nu, Tk):
     sigmaA = sigmaA0*phi_xa
     return sigmaA 
 
-def tau_nu_lyA(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None):
+def tau_nu_lyA_on_grid(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None):
     """
     Estimate the Lyman-alpha optical depth on a simulation grid.
 
@@ -195,8 +195,33 @@ def tau_nu_lyA(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None):
     if isinstance(nu, units.quantity.Quantity):
         nu = nu.to('Hz').value
     x_nu = (nu-nuA)/dnu_D
-    nH = (X_H*cosmo.Ob0*(1+z)**3*cosmo.critical_density0/constants.m_p).to('1/cm^3')
+    nH = (X_H*cosmo.Ob0*cosmo.critical_density0/constants.m_p).to('1/cm^3')
     nHI = xHI*nH
     H_xa = approximation_voigt_faddeeva(x_nu, a_nu)
     tau_nu = 1.820e5*H_xa/np.sqrt(Tk4)*nHI.to('1/cm^3').value*dr.to('pc').value
     return tau_nu
+
+def tau_nu_lyA_los(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None, 
+                   box_len=None, los_axis=2, los_len=30*units.Mpc):
+    if cosmo is None:
+        print('Assuming Planck18 cosmology')
+        cosmo = Planck18
+
+    if box_len is None:
+        box_len = 200/cosmo.h*units.Mpc
+        print(f'As box_len was not provided, it is assumed to be {box_len}')
+
+    if los_axis!=2:
+        xHI = np.swapaxes(xHI,los_axis,2)
+        Tk = np.swapaxes(Tk,los_axis,2)
+    
+    if not isinstance(los_len, units.quantity.Quantity):
+        print(f'As a unitless los_len was provided, it is assumed to be number of grids')
+        los_cells = los_len
+    else:
+        los_cells = int(np.round(los_len*(xHI.shape[0]/box_len)))
+
+    tauA = tau_nu_lyA_on_grid(z, xHI, Tk, dr, nu=nu, X_H=X_H, cosmo=cosmo)
+    tauA_padded = np.concatenate((tauA[:,:,-int(los_cells/2):],tauA,tauA[:,:,:int(los_cells/2) if los_cells%2==0 else int(los_cells/2)+1]),axis=2)
+    tauA_los = np.swapaxes(np.array([tauA_padded[:,:,i:i+los_cells].sum(axis=2).T for i in tqdm(range(tauA.shape[2]))]),0,2)
+    return tauA_los
