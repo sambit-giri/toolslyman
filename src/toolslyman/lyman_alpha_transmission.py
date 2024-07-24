@@ -182,6 +182,8 @@ def tau_nu_lyA_on_grid(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None
         print('Assuming Planck18 cosmology')
         cosmo = Planck18
 
+    if not isinstance(dr, units.quantity.Quantity):
+        dr *= units.Mpc
     if isinstance(Tk, units.quantity.Quantity):
         Tk4 = Tk.to('K').value/1e4
     else:
@@ -203,6 +205,48 @@ def tau_nu_lyA_on_grid(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None
 
 def tau_nu_lyA_los(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None, 
                    box_len=None, los_axis=2, los_len=30*units.Mpc):
+    """
+    Estimate the effective Lyman-alpha optical depth along the line of sight, smoothed over different scales.
+
+    Parameters
+    ----------
+    z : float
+        The redshift at which the optical depth is being calculated.
+    xHI : ndarray
+        The neutral hydrogen fraction at each grid point.
+    Tk : float or astropy.units.quantity.Quantity
+        The temperature of the gas at each grid point. Can be given as a float in K or as an astropy Quantity.
+    dr : astropy.units.quantity.Quantity
+        The comoving path length through the grid cells. Should be an astropy Quantity.
+    nu : float or astropy.units.quantity.Quantity, optional
+        The frequency at which to calculate the optical depth, default is the Lyman-alpha frequency (2.46e15 Hz).
+    X_H : float, optional
+        The hydrogen mass fraction, default is 0.76.
+    cosmo : astropy.cosmology instance, optional
+        The cosmology to use for the calculation. If None, Planck18 cosmology is assumed.
+    box_len : astropy.units.quantity.Quantity, optional
+        The length of the simulation box. If None, it is assumed to be 200 Mpc/h.
+    los_axis : int, optional
+        The axis assumed to be along the line of sight direction.
+    los_len : astropy.units.quantity.Quantity or int
+        The length along the line of sight over which the effective optical depth is estimated. 
+        If provided as an integer, it is assumed to be the number of grid cells.
+
+    Returns
+    -------
+    tau_nu : ndarray
+        The Lyman-alpha optical depth at each grid point.
+
+    Example
+    -------
+    >>> from astropy import units as u
+    >>> from astropy.cosmology import Planck18
+    >>> z = 6.0
+    >>> xHI = np.random.rand(100, 100, 100)
+    >>> Tk = 1e4 * u.K
+    >>> dr = 1.0 * u.Mpc
+    >>> tau = tau_nu_lyA_los(z, xHI, Tk, dr)
+    """
     if cosmo is None:
         print('Assuming Planck18 cosmology')
         cosmo = Planck18
@@ -223,5 +267,8 @@ def tau_nu_lyA_los(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None,
 
     tauA = tau_nu_lyA_on_grid(z, xHI, Tk, dr, nu=nu, X_H=X_H, cosmo=cosmo)
     tauA_padded = np.concatenate((tauA[:,:,-int(los_cells/2):],tauA,tauA[:,:,:int(los_cells/2) if los_cells%2==0 else int(los_cells/2)+1]),axis=2)
-    tauA_los = np.swapaxes(np.array([tauA_padded[:,:,i:i+los_cells].sum(axis=2).T for i in tqdm(range(tauA.shape[2]))]),0,2)
+    exp_tauA_padded = np.exp(-tauA_padded)
+    exp_tauA_los = np.array([exp_tauA_padded[:,:,i:i+los_cells].sum(axis=2).T/los_cells for i in tqdm(range(tauA.shape[2]))])
+    tauA_los = -np.log(exp_tauA_los)
+    tauA_los = np.swapaxes(tauA_los,0,2)
     return tauA_los
