@@ -61,8 +61,9 @@ class Plot_PhotometricIGM():
         #### Plot: Truth+smoothed
         ax = axs[0]
         ax.set_title('Truth+smoothed')
-        TIGM_reconst=reconst_map-np.mean(reconst_map)
-        CS = ax.pcolormesh(x_map,y_map,TIGM_reconst,cmap='RdYlBu',vmin=-0.1,vmax=0.1)#,vmin=0,vmax=0.13)
+        dTIGM_reconst=reconst_map-np.mean(reconst_map)
+        self.dTIGM_reconst = dTIGM_reconst
+        CS = ax.pcolormesh(x_map,y_map,dTIGM_reconst,cmap=cmap,vmin=-0.1,vmax=0.1)#,vmin=0,vmax=0.13)
         # cax1 = fig.add_axes([0.78, 0.1, 0.03, 0.8])
         cbar=fig.colorbar(CS, #cax=cax1,
         #        ticks=arange(-0.05,0.05+0.01,0.01),
@@ -87,7 +88,8 @@ class Plot_PhotometricIGM():
         ax = axs[1]
         ax.set_title('Noisy+smoothed')
         dTIGM_noisy_reconst=noisy_reconst_map-np.mean(noisy_reconst_map)
-        CS = plt.pcolormesh(x_map,y_map,dTIGM_noisy_reconst,cmap='RdYlBu',vmin=-0.1,vmax=0.1)#,vmin=0,vmax=0.13)
+        self.dTIGM_noisy_reconst = dTIGM_noisy_reconst
+        CS = plt.pcolormesh(x_map,y_map,dTIGM_noisy_reconst,cmap=cmap,vmin=-0.1,vmax=0.1)#,vmin=0,vmax=0.13)
         # cax1 = fig.add_axes([0.78, 0.1, 0.03, 0.8])
         cbar=fig.colorbar(CS, #cax=cax1,
         #        ticks=arange(-0.05,0.05+0.01,0.01),
