@@ -4,4 +4,5 @@ from .lyman_alpha_transmission import *
 from .igm_tomography import *
 from .source_model import *
 from . import telescope_filters
+from . import toy_model
 from .plotting_functions import *
