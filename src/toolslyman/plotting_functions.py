@@ -39,7 +39,7 @@ class Plot_PhotometricIGM():
         cbar=fig.colorbar(pm, label='${\\rm exp}(-\\tau_{\\rm eff})$')
         ax[0].set_aspect('equal')
         ax[1].set_title('Truth+smoothed')
-        pm=ax[1].pcolormesh(sim.x_mesh, sim.y_mesh, gaussian_filter(sim.TIGM,smoothing_length).T, 
+        pm=ax[1].pcolormesh(sim.x_mesh, sim.y_mesh, gaussian_filter(sim.TIGM,smoothing_length, mode='wrap').T, 
                         cmap=cmap, shading='auto')
         cbar=fig.colorbar(pm, label='${\\rm exp}(-\\tau_{\\rm eff})$')
         ax[1].set_aspect('equal')
