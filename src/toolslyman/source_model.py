@@ -2,7 +2,8 @@ import numpy as np
 import astropy.units as u
 import astropy.constants as consts
 from astropy.cosmology import FlatLambdaCDM,Planck18
-from scipy.integrate import trapz
+try: from scipy.integrate import trapz
+except: from scipy.integrate import trapezoid as trapz
 
 class SOURCE_MODEL_FRAMEWORK():
     def __init__(self, cosmo=None):

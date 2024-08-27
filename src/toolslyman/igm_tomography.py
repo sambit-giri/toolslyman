@@ -1,6 +1,7 @@
 import numpy as np
 from tqdm import tqdm 
-from scipy.integrate import trapz
+try: from scipy.integrate import trapz
+except: from scipy.integrate import trapezoid as trapz
 import astropy.units as u
 import astropy.constants as consts
 from astropy.io import fits
