@@ -137,7 +137,69 @@ def lyA_scattering_cross_section(nu, Tk):
     sigmaA = sigmaA0*phi_xa
     return sigmaA 
 
-def tau_nu_lyA_on_grid(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None):
+def tau_nu_lyA_FGPA(z, xHI, dn, f_alpha=0.416, lambda_alpha=1216.0*units.Angstrom, f_rescale=1.0, X_H=0.76, cosmo=None):
+    """
+    Estimate the Lyman-alpha optical depth on a simulation grid.
+
+    Parameters
+    ----------
+    z : float
+        The redshift at which the optical depth is being calculated.
+    xHI : ndarray
+        The neutral hydrogen fraction at each grid point.
+    dn : ndarray
+        The overdensity at each grid point.
+    f_alpha : float
+        The Lyman alpha oscillator strength, default is 0.416.
+    lambda_alpha : float or astropy.units.quantity.Quantity, optional
+        The Lyman-alpha wavelength (1216 A).
+    f_rescale : float
+        The normalization factor to account for the unresolved small-scale fluctuations 
+        in the density and velocity fields, default is 1.0.
+    X_H : float, optional
+        The hydrogen mass fraction, default is 0.76.
+    cosmo : astropy.cosmology instance, optional
+        The cosmology to use for the calculation. If None, Planck18 cosmology is assumed.
+
+    Returns
+    -------
+    tau_nu : ndarray
+        The Lyman-alpha optical depth at each grid point.
+
+    Notes
+    -----
+    This function uses equation 21 in Choudhury, Paranjape & Bosman (2021).
+
+    Example
+    -------
+    >>> from astropy import units as u
+    >>> from astropy.cosmology import Planck18
+    >>> z = 6.0
+    >>> xHI = np.random.rand(100, 100, 100)
+    >>> Tk = 1e4 * u.K
+    >>> dr = 1.0 * u.Mpc
+    >>> tau = tau_nu_lyA(z, xHI, Tk, dr)
+    """
+    if cosmo is None:
+        print('Assuming Planck18 cosmology')
+        cosmo = Planck18
+
+    if not isinstance(lambda_alpha, units.quantity.Quantity):
+        lambda_alpha *= units.Angstrom
+        print('Wavelength assumed to be provided in Angstrom unit.')
+    lambda_alpha = lambda_alpha.to('m').value
+
+    if dn.min()>1:
+        dn = dn/dn.mean()-1
+
+    nH = (1+dn)*(X_H*cosmo.Ob0*cosmo.critical_density0/constants.m_p).to('1/cm^3')
+    nHI = xHI*nH
+
+    tau_nu0 = 6.45e-18*f_rescale*(f_alpha/0.416)*(lambda_alpha/1.216e-7)
+    tau_nu = tau_nu0*(1/cosmo.H(z)).to('s').value*(1+z)**3*nHI.to('1/m^3').value
+    return tau_nu
+
+def tau_nu_lyA_Smith2015(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None):
     """
     Estimate the Lyman-alpha optical depth on a simulation grid.
 
@@ -203,8 +265,7 @@ def tau_nu_lyA_on_grid(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None
     tau_nu = 1.820e5*H_xa/np.sqrt(Tk4)*nHI.to('1/cm^3').value*dr.to('pc').value
     return tau_nu
 
-def tau_nu_lyA_los(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None, 
-                   box_len=None, los_axis=2, los_len=30*units.Mpc):
+def tau_nu_lyA_los(z, xHI, dn, los_len=30*units.Mpc, box_len=None, los_axis=2, method='FGPA', X_H=0.76, cosmo=None, **kwargs):
     """
     Estimate the effective Lyman-alpha optical depth along the line of sight, smoothed over different scales.
 
@@ -214,23 +275,13 @@ def tau_nu_lyA_los(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None,
         The redshift at which the optical depth is being calculated.
     xHI : ndarray
         The neutral hydrogen fraction at each grid point.
-    Tk : float or astropy.units.quantity.Quantity
-        The temperature of the gas at each grid point. Can be given as a float in K or as an astropy Quantity.
-    dr : astropy.units.quantity.Quantity
-        The comoving path length through the grid cells. Should be an astropy Quantity.
-    nu : float or astropy.units.quantity.Quantity, optional
-        The frequency at which to calculate the optical depth, default is the Lyman-alpha frequency (2.46e15 Hz).
-    X_H : float, optional
-        The hydrogen mass fraction, default is 0.76.
-    cosmo : astropy.cosmology instance, optional
-        The cosmology to use for the calculation. If None, Planck18 cosmology is assumed.
-    box_len : astropy.units.quantity.Quantity, optional
-        The length of the simulation box. If None, it is assumed to be 200 Mpc/h.
-    los_axis : int, optional
-        The axis assumed to be along the line of sight direction.
+    dn : ndarray
+        The overdensity at each grid point.
     los_len : astropy.units.quantity.Quantity or int
         The length along the line of sight over which the effective optical depth is estimated. 
         If provided as an integer, it is assumed to be the number of grid cells.
+    method : str
+        The formalism used to estimate the Lyman-alpha optical depth, default is 'FGPA'.
 
     Returns
     -------
@@ -243,9 +294,7 @@ def tau_nu_lyA_los(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None,
     >>> from astropy.cosmology import Planck18
     >>> z = 6.0
     >>> xHI = np.random.rand(100, 100, 100)
-    >>> Tk = 1e4 * u.K
-    >>> dr = 1.0 * u.Mpc
-    >>> tau = tau_nu_lyA_los(z, xHI, Tk, dr)
+    >>> tau = tau_nu_lyA_los(z, xHI)
     """
     if cosmo is None:
         print('Assuming Planck18 cosmology')
@@ -257,7 +306,6 @@ def tau_nu_lyA_los(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None,
 
     if los_axis!=2:
         xHI = np.swapaxes(xHI,los_axis,2)
-        Tk = np.swapaxes(Tk,los_axis,2)
     
     if not isinstance(los_len, units.quantity.Quantity):
         print(f'As a unitless los_len was provided, it is assumed to be number of grids')
@@ -265,7 +313,22 @@ def tau_nu_lyA_los(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None,
     else:
         los_cells = int(np.round(los_len*(xHI.shape[0]/box_len)))
 
-    tauA = tau_nu_lyA_on_grid(z, xHI, Tk, dr, nu=nu, X_H=X_H, cosmo=cosmo)
+    if dn.min()>1:
+        dn = dn/dn.mean()-1
+
+    if method.lower()=='smith2015':
+        Tk = kwargs.get('Tk')
+        dr = kwargs.get('dr')
+        nu = kwargs.get('nu', 2.46e15*units.Hz)
+        if los_axis!=2: 
+            Tk = np.swapaxes(Tk,los_axis,2)
+        tauA = tau_nu_lyA_Smith2015(z, xHI, Tk, dr, nu=nu, X_H=X_H, cosmo=cosmo)
+    elif method.lower()=='fgpa':
+        f_alpha = kwargs.get('f_alpha', 0.416)
+        lambda_alpha = kwargs.get('lambda_alpha', 1216.0*units.Angstrom)
+        f_rescale = kwargs.get('f_rescale', 1.0)
+        tauA = tau_nu_lyA_FGPA(z, xHI, dn, f_alpha=f_alpha, lambda_alpha=lambda_alpha, f_rescale=f_rescale, X_H=X_H, cosmo=cosmo)
+
     tauA_padded = np.concatenate((tauA[:,:,-int(los_cells/2):],tauA,tauA[:,:,:int(los_cells/2) if los_cells%2==0 else int(los_cells/2)+1]),axis=2)
     exp_tauA_padded = np.exp(-tauA_padded)
     exp_tauA_los = np.array([exp_tauA_padded[:,:,i:i+los_cells].sum(axis=2).T/los_cells for i in tqdm(range(tauA.shape[2]))])
