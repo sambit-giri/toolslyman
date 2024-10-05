@@ -137,7 +137,7 @@ def lyA_scattering_cross_section(nu, Tk):
     sigmaA = sigmaA0*phi_xa
     return sigmaA 
 
-def tau_nu_lyA_FGPA(z, xHI, dn, f_alpha=0.416, lambda_alpha=1216.0*units.Angstrom, f_rescale=1.0, X_H=0.76, cosmo=None):
+def tau_nu_lyA_FGPA(z, xHI, dn, f_alpha=0.416, lambda_alpha=1216.0*units.Angstrom, k_res=1.0, X_H=0.76, cosmo=None):
     """
     Estimate the Lyman-alpha optical depth on a simulation grid.
 
@@ -175,7 +175,7 @@ def tau_nu_lyA_FGPA(z, xHI, dn, f_alpha=0.416, lambda_alpha=1216.0*units.Angstro
     >>> from astropy import units as u
     >>> from astropy.cosmology import Planck18
     >>> z = 6.0
-    >>> xHI = np.random.rand(100, 100, 100)
+    >>> xHI = np.radom.rand(100, 100, 100)
     >>> Tk = 1e4 * u.K
     >>> dr = 1.0 * u.Mpc
     >>> tau = tau_nu_lyA(z, xHI, Tk, dr)
@@ -192,14 +192,14 @@ def tau_nu_lyA_FGPA(z, xHI, dn, f_alpha=0.416, lambda_alpha=1216.0*units.Angstro
     if dn.min()>1:
         dn = dn/dn.mean()-1
 
-    nH = (1+dn)*(X_H*cosmo.Ob0*cosmo.critical_density0/constants.m_p).to('1/cm^3')
+    nH = (1+dn)*(X_H*cosmo.Ob0*cosmo.critical_density0/(constants.m_p+constants.m_e)).to('1/cm^3')
     nHI = xHI*nH
 
-    tau_nu0 = 6.45e-18*f_rescale*(f_alpha/0.416)*(lambda_alpha/1.216e-7)
-    tau_nu = tau_nu0*(1/cosmo.H(z)).to('s').value*(1+z)**3*nHI.to('1/m^3').value
+    tau_nu0 = 1.344e-7*k_res*(f_alpha/0.416)*(lambda_alpha/1.216e-7)
+    tau_nu = tau_nu0*(1/cosmo.H(z)).to('s').value*(1+z)**3*nHI.to('1/cm^3').value
     return tau_nu
 
-def tau_nu_lyA_Smith2015(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None):
+def tau_nu_lyA(z, xHI, Tk, dr, nu=2.46e15*units.Hz, X_H=0.76, cosmo=None):
     """
     Estimate the Lyman-alpha optical depth on a simulation grid.
 
@@ -326,8 +326,8 @@ def tau_nu_lyA_los(z, xHI, dn, los_len=30*units.Mpc, box_len=None, los_axis=2, m
     elif method.lower()=='fgpa':
         f_alpha = kwargs.get('f_alpha', 0.416)
         lambda_alpha = kwargs.get('lambda_alpha', 1216.0*units.Angstrom)
-        f_rescale = kwargs.get('f_rescale', 1.0)
-        tauA = tau_nu_lyA_FGPA(z, xHI, dn, f_alpha=f_alpha, lambda_alpha=lambda_alpha, f_rescale=f_rescale, X_H=X_H, cosmo=cosmo)
+        k_res = kwargs.get('k_res', 1.0)
+        tauA = tau_nu_lyA_FGPA(z, xHI, dn, f_alpha=f_alpha, lambda_alpha=lambda_alpha, k_res=k_res, X_H=X_H, cosmo=cosmo)
 
     tauA_padded = np.concatenate((tauA[:,:,-int(los_cells/2):],tauA,tauA[:,:,:int(los_cells/2) if los_cells%2==0 else int(los_cells/2)+1]),axis=2)
     exp_tauA_padded = np.exp(-tauA_padded)
