@@ -175,7 +175,8 @@ class PhotometricIGM():
 
 def IGM_tomographic_map_reconstruction(box_len, n_grid, tau_eff,
                                        Nbin=100, cosmo=None,
-                                       IGM_tomography_params=None, filter_name='NB816',
+                                       IGM_tomography_params=None, 
+                                       filter_name='NB816',
                                        muv_low=20*u.mag,
                                        ):
     ### IGM tomographic map reconstruction ###
@@ -194,6 +195,7 @@ def IGM_tomographic_map_reconstruction(box_len, n_grid, tau_eff,
     muv_lim = IGM_tomography_params['muv_lim']
     smoothing_length = IGM_tomography_params['smoothing_length']
     Ngal_in_box = IGM_tomography_params['Ngal_in_box']
+    if isinstance(muv_low, (float,int)): muv_low *= u.mag
 
     # Define grid for IGM tomographic map reconstruction
     x_map, y_map = np.mgrid[0:box_len:n_grid*1j, 0:box_len:n_grid*1j]

@@ -3,7 +3,8 @@ import astropy.units as u
 from astropy.cosmology import Planck18
 from . import source_model
 
-def IGM_tomography_parameters(box_len, filter_name='NB816', cosmo=None):
+def IGM_tomography_parameters(box_len, filter_name='NB816', cosmo=None,
+                              muv_lim=26.0, mNB_3sigma=27.5, redshift = 5.7):
     '''
     Set IGM tomography parameters.
 
@@ -20,6 +21,10 @@ def IGM_tomography_parameters(box_len, filter_name='NB816', cosmo=None):
         Currently, only 'NB816' is supported.
     cosmo : astropy.cosmology.Cosmology, optional
         The cosmological model to be used. Default is Planck18.
+    muv_lim : float, optional
+        The Muv limit.
+    mNB_3sigma : float, optional
+        The 3sigma limit of the telescope filter.
 
     Returns:
     --------
@@ -59,7 +64,7 @@ def IGM_tomography_parameters(box_len, filter_name='NB816', cosmo=None):
 
     if filter_name=='NB816':
         print('### Set IGM tomography parameters with NB816 ###')
-        redshift = 5.7
+        # redshift = 5.7
 
         FoV = 1.76*u.deg**2  # HSC FoV
         R_FoV = (np.sqrt(FoV.to('rad2').value/np.pi)*cosmo.comoving_distance(redshift)*cosmo.h).to('Mpc').value # cMpc/h
@@ -69,8 +74,8 @@ def IGM_tomography_parameters(box_len, filter_name='NB816', cosmo=None):
         zmax = 6.86
         zbg  = (zmax+zmin)/2
 
-        muv_lim = 26.0*u.mag
-        mNB_3sigma = 27.5*u.mag # 27.5 # 27.37
+        if isinstance(muv_lim,(float,int)): muv_lim *= u.mag
+        if isinstance(mNB_3sigma,(float,int)): mNB_3sigma *= u.mag # 27.5 # 27.37
         mNB_lim = mNB_3sigma+2.5*np.log10(3/1)*u.mag
 
         realistic_factor = 0.20 # completeness factor
