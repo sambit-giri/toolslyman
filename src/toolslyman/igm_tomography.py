@@ -178,7 +178,7 @@ def IGM_tomographic_map_reconstruction(box_len, n_grid, tau_eff,
                                        IGM_tomography_params=None, 
                                        filter_name='NB816',
                                        muv_low=20*u.mag,
-                                       ):
+                                       random_seed=123456):
     ### IGM tomographic map reconstruction ###
     # Nbin: Define m_uv PDF from which m_uv of b/g galaxies are sampled
 
@@ -207,7 +207,7 @@ def IGM_tomographic_map_reconstruction(box_len, n_grid, tau_eff,
 
     # Sample background galaxies and observed TIGM along the skewers
     x_sample, y_sample, TIGM_sample, TIGM_obs, TIGM_noise, muv_sample, TIGM_var = \
-        sim.get_background_galaxy_sample(sample_size=Ngal_in_box, dpdmuv=(muv,PDF), mNB_lim=mNB_lim)
+        sim.get_background_galaxy_sample(sample_size=Ngal_in_box, dpdmuv=(muv,PDF), mNB_lim=mNB_lim, random_seed=random_seed)
 
     # Truth: simulated IGM map with smoothing but no noise
     reconst_map, sightline_map = \
