@@ -236,6 +236,6 @@ def IGM_tomographic_map_reconstruction(box_len, n_grid, tau_eff,
         'TIGM_var': TIGM_var,
         'reconst_map': reconst_map, 
         'sightline_map': sightline_map,
-        'noisy_reconst_map': noisy_reconst_map,
+        'reconst_noise_map': noisy_reconst_map,
         'variance_map': variance_map,
     }
