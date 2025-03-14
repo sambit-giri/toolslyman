@@ -8,4 +8,5 @@ from .mean_profile import *
 from .source_model import *
 from . import telescope_filters
 from . import toy_model
+from .helper_functions import *
 from .plotting_functions import *

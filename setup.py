@@ -12,7 +12,7 @@ with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
 setup(name='toolslyman',
-      version='0.0.3',
+      version='0.0.4',
       author='Sambit Giri',
       author_email='sambit.giri@gmail.com',
       packages=find_packages("src"),
