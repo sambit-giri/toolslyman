@@ -1,8 +1,7 @@
-def compute_spectrum(xvel_in,xvel_out,cdens,temp,lambda0,fvalue,mass,damped,periodic):
+import numpy as np
+from scipy import special
 
-    import numpy as np
-    from scipy import special
-
+def compute_spectrum_after_IGM_transmission(xvel_in,xvel_out,cdens,temp,lambda0,fvalue,mass,damped,periodic):
     '''
     Returns optical depth array
 
@@ -80,8 +79,7 @@ def compute_spectrum(xvel_in,xvel_out,cdens,temp,lambda0,fvalue,mass,damped,peri
             else:
                 dtau = tauc[i] * np.exp(-vpar*vpar) / np.sqrt(np.pi)
                                 
-            tau = tau + dtau
-                                
+            tau = tau + dtau                            
 
     return tau
 
