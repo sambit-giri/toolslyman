@@ -1,0 +1,13 @@
+name: astro
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.10.*
+  - numpy
+  - scipy
+  - matplotlib
+  - pytest
+  - pip
+  - pip:
+    - -r requirements.txt  # This ensures any additional pip packages are installed

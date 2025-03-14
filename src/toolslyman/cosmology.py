@@ -1,4 +1,5 @@
 import astropy
+from astropy import cosmology as astropy_cosmo
 
 # Define the global cosmology object at the module level
 cosmo = None
@@ -15,6 +16,7 @@ def set_cosmology(name='Planck', **kwargs):
         'planck13': astropy.cosmology.Planck13,
         'planck15': astropy.cosmology.Planck15,
         'planck18': astropy.cosmology.Planck18,
+        'planck'  : astropy.cosmology.Planck18,
     }
     
     if isinstance(name, astropy.cosmology.Cosmology):
