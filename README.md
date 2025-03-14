@@ -1,6 +1,13 @@
 # toolslyman
 
+[![License](https://img.shields.io/github/license/sambit-giri/toolslyman.svg)](https://github.com/sambit-giri/toolslyman/blob/main/LICENSE)
+[![GitHub Repository](https://img.shields.io/github/repo-size/sambit-giri/toolslyman)](https://github.com/sambit-giri/toolslyman)
+![CI Status](https://github.com/sambit-giri/toolslyman/actions/workflows/ci.yml/badge.svg)
+[![PyPI version](https://badge.fury.io/py/toolslyman.svg)](https://badge.fury.io/py/toolslyman)
+
 A python package to study lyman alpha photons in our Universe. More documentation can be found at its [readthedocs](https://toolslyman.readthedocs.io/) page.
+
+**Note:** Some modules in the package are still under active development. Please contact the authors if you encounter any issues.
 
 ## Package details
 
