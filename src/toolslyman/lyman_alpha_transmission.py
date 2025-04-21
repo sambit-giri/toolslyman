@@ -27,16 +27,6 @@ def approximation_voigt_faddeeva(x, a):
     H : float or ndarray
         The value of the Voigt profile at the given `x` values. The output shape matches the input shape.
 
-    Notes
-    -----
-    The Voigt profile is computed using the Faddeeva function as follows:
-
-    \[
-    V(x, a) = \text{Re}\left[ \text{wofz}(x + i a) \right]
-    \]
-
-    Here, `wofz` is the Faddeeva function, which is a standard way to compute the Voigt profile.
-
     Example
     -------
     >>> x = 0.5
@@ -68,16 +58,6 @@ def direct_voigt_profile(x, a):
     -------
     V : ndarray
         The Voigt profile evaluated at the input positions `x`. The shape of the output matches the shape of the input `x`.
-
-    Notes
-    -----
-    The Voigt profile is computed using the integral of the line profile function:
-    
-    \[
-    V(x, a) = \frac{a}{\pi} \int_{-\infty}^\infty \frac{e^{-y^2}}{(y-x)^2 + a^2} \, dy
-    \]
-
-    where \( a \) is the line a-factor and \( x \) represents the spectral line's frequency or wavelength offset.
 
     Example
     -------
