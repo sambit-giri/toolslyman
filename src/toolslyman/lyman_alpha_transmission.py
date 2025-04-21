@@ -316,18 +316,14 @@ def tau_nu_lyA_los(z, xHI, dn, los_len=30*units.Mpc, box_len=None, los_axis=2, m
     if dn.min()>1:
         dn = dn/dn.mean()-1
 
-    if method.lower()=='smith2015':
-        Tk = kwargs.get('Tk')
-        dr = kwargs.get('dr')
-        nu = kwargs.get('nu', 2.46e15*units.Hz)
-        if los_axis!=2: 
-            Tk = np.swapaxes(Tk,los_axis,2)
-        tauA = tau_nu_lyA_Smith2015(z, xHI, Tk, dr, nu=nu, X_H=X_H, cosmo=cosmo)
-    elif method.lower()=='fgpa':
+    if method.lower()=='fgpa':
         f_alpha = kwargs.get('f_alpha', 0.416)
         lambda_alpha = kwargs.get('lambda_alpha', 1216.0*units.Angstrom)
         k_res = kwargs.get('k_res', 1.0)
         tauA = tau_nu_lyA_FGPA(z, xHI, dn, f_alpha=f_alpha, lambda_alpha=lambda_alpha, k_res=k_res, X_H=X_H, cosmo=cosmo)
+    else:
+        print(f'method={method} is unknown.')
+        return None
 
     tauA_padded = np.concatenate((tauA[:,:,-int(los_cells/2):],tauA,tauA[:,:,:int(los_cells/2) if los_cells%2==0 else int(los_cells/2)+1]),axis=2)
     exp_tauA_padded = np.exp(-tauA_padded)
