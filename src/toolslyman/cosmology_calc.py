@@ -4,6 +4,35 @@ from scipy.interpolate import splev, splrep
 from . import cosmology
 
 def cdist_to_z(cdist, cosmo=None, zmin=1e-4, zmax=1100, n_bins=1000):
+    """
+    Convert comoving distance(s) to redshift(s) using an interpolated inverse of the 
+    comoving distance-redshift relation.
+
+    Parameters
+    ----------
+    cdist : Quantity or array-like
+        Comoving distance(s) to convert (can be with or without units).
+    cosmo : astropy.cosmology instance, optional
+        Cosmological model to use. Defaults to toolslyman.cosmology.cosmo if None.
+    zmin : float, optional
+        Minimum redshift to consider for interpolation (default: 1e-4).
+    zmax : float, optional
+        Maximum redshift to consider for interpolation (default: 1100).
+    n_bins : int, optional
+        Number of redshift samples to build the interpolation grid (default: 1000).
+
+    Returns
+    -------
+    z_arr : ndarray
+        Redshift(s) corresponding to the input comoving distance(s).
+
+    Notes
+    -----
+    - The function uses a spline interpolation in log-log space for better accuracy 
+      across a wide range of redshifts and distances.
+    - If any values fall outside the initial interpolation range, the grid is automatically
+      extended and the interpolation recalculated.
+    """
     if cosmo is None:
         cosmo = cosmology.cosmo
     
