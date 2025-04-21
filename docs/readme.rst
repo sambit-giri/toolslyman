@@ -1,10 +1,10 @@
-==============================
+==========
 toolslyman
-==============================
+==========
 
-This is a simple python package template that can be forked and used.
+A python package to study lyman-alpha photons in our Universe.
 
 Package details
 ===============
 
-The package provides basic structure of a python package that can be used as a starting point to build your own.
+The package provides modules to model transmission of lyman-alpha photons in cosmological volumes.

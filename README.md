@@ -5,13 +5,13 @@
 ![CI Status](https://github.com/sambit-giri/toolslyman/actions/workflows/ci.yml/badge.svg)
 [![PyPI version](https://badge.fury.io/py/toolslyman.svg)](https://badge.fury.io/py/toolslyman)
 
-A python package to study lyman alpha photons in our Universe. More documentation can be found at its [readthedocs](https://toolslyman.readthedocs.io/) page.
+A python package to study lyman-alpha photons in our Universe. More documentation can be found at its [readthedocs](https://toolslyman.readthedocs.io/) page.
 
 **Note:** Some modules in the package are still under active development. Please contact the authors if you encounter any issues.
 
 ## Package details
 
-The package provides basic structure of a python package that can be used as a starting point to build your own.
+The package provides modules to model transmission of lyman-alpha photons in cosmological volumes.
 
 ## INSTALLATION
 
