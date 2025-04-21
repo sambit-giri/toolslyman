@@ -9,6 +9,29 @@ from . import cosmology
 from .cosmology_calc import *
 
 def column_density_along_skewer(z_source, xHI, dn, dr, X_H=0.76, cosmo=None):
+    """
+    Compute the cumulative neutral hydrogen column density along a skewer.
+
+    Parameters
+    ----------
+    z_source : float
+        Redshift of the background source.
+    xHI : ndarray
+        Neutral hydrogen fraction along the skewer.
+    dn : ndarray
+        Overdensity field (δ = ρ/ρ̄ - 1).
+    dr : Quantity or float
+        Comoving cell length (can be with or without units).
+    X_H : float, optional
+        Hydrogen mass fraction. Default is 0.76.
+    cosmo : astropy.cosmology, optional
+        Cosmology instance. If None, uses default from toolslyman.
+
+    Returns
+    -------
+    N_HI : ndarray
+        Comoving neutral hydrogen column density along the skewer (in cm^-2).
+    """
     if dn.min()>1:
         dn = dn/dn.mean()-1
 
@@ -29,6 +52,42 @@ def column_density_along_skewer(z_source, xHI, dn, dr, X_H=0.76, cosmo=None):
     return N_HI
 
 def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76, cosmo=None, f_alpha=0.4164, lambda_bins=1000, damped=True, verbose=False):
+    """
+    Compute the Lyman-alpha optical depth (τ) along a cosmological skewer.
+
+    Parameters
+    ----------
+    z_source : float
+        Redshift of the background source.
+    xHI : ndarray
+        Neutral hydrogen fraction along the skewer.
+    dn : ndarray
+        Overdensity field (δ = ρ/ρ̄ - 1).
+    dr : Quantity or float
+        Comoving cell length (can be with or without units).
+    temp : Quantity, optional
+        Gas temperature (default: 1e4 K).
+    X_H : float, optional
+        Hydrogen mass fraction (default: 0.76).
+    cosmo : astropy.cosmology, optional
+        Cosmology instance. If None, uses default from toolslyman.
+    f_alpha : float, optional
+        Oscillator strength for Lyman-alpha transition (default: 0.4164).
+    lambda_bins : int or ndarray, optional
+        If int or float: number of wavelength bins between 1100–1300 Å (rest-frame).
+        If array: specifies the wavelength bin edges (assumed in Ångström).
+    damped : bool, optional
+        Whether to include the damping wing (Voigt profile). If False, uses Gaussian core only.
+    verbose : bool, optional
+        If True, prints progress information every 10 cells.
+
+    Returns
+    -------
+    tau_lambda : ndarray
+        Total Lyman-alpha optical depth at each wavelength bin.
+    lambda_obs : Quantity
+        Observed wavelength array corresponding to the computed τ values (in Å).
+    """
     if cosmo is None:
         cosmo = cosmology.cosmo
     
