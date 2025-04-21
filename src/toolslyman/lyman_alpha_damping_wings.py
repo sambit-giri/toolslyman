@@ -32,11 +32,11 @@ def column_density_along_skewer(z_source, xHI, dn, dr, X_H=0.76, cosmo=None):
     N_HI : ndarray
         Comoving neutral hydrogen column density along the skewer (in cm^-2).
     """
-    if dn.min()>1:
-        dn = dn/dn.mean()-1
-
     if cosmo is None:
         cosmo = cosmology.cosmo
+
+    if dn.min()>1:
+        dn = dn/dn.mean()-1
     
     try:
         dr = dr.to('cm')
@@ -90,6 +90,9 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76
     """
     if cosmo is None:
         cosmo = cosmology.cosmo
+
+    if dn.min()>1:
+        dn = dn/dn.mean()-1
     
     try:
         dr = dr.to('cm')
