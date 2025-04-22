@@ -53,40 +53,48 @@ def column_density_along_skewer(z_source, xHI, dn, dr, X_H=0.76, cosmo=None):
 
 def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76, cosmo=None, f_alpha=0.4164, lambda_bins=1000, damped=True, verbose=False):
     """
-    Compute the Lyman-alpha optical depth (τ) along a cosmological skewer.
+    Compute the Lyman-alpha optical depth (τ) along one or more cosmological skewers.
+
+    This function supports both single and multiple skewers (2D arrays). The source is 
+    assumed to be at the origin or index 0 of the skewer array. Use `np.roll` to adjust
+    the line-of-sight skewer if necessary.
 
     Parameters
     ----------
     z_source : float
-        Redshift of the background source.
+        Redshift of the background source (e.g., a quasar).
     xHI : ndarray
-        Neutral hydrogen fraction along the skewer.
+        Neutral hydrogen fraction along the skewer. Shape can be (N,) or (N_skewers, N).
     dn : ndarray
-        Overdensity field (δ = ρ/ρ̄ - 1).
+        Baryon overdensity field (δ = ρ/ρ̄ - 1). Shape must match `xHI`.
     dr : Quantity or float
-        Comoving cell length (can be with or without units).
-    temp : Quantity, optional
-        Gas temperature (default: 1e4 K).
+        Comoving length of each cell along the skewer (e.g., in Mpc or cm).
+    temp : Quantity or ndarray, optional
+        Gas temperature in Kelvin. Can be scalar, 1D, or 2D array matching shape of `xHI`.
+        Default is 1e4 K.
     X_H : float, optional
-        Hydrogen mass fraction (default: 0.76).
-    cosmo : astropy.cosmology, optional
-        Cosmology instance. If None, uses default from toolslyman.
+        Hydrogen mass fraction. Default is 0.76.
+    cosmo : astropy.cosmology.Cosmology, optional
+        Cosmology instance to use. If None, uses the default from `toolslyman`.
     f_alpha : float, optional
-        Oscillator strength for Lyman-alpha transition (default: 0.4164).
+        Oscillator strength for the Lyman-alpha transition. Default is 0.4164.
     lambda_bins : int or ndarray, optional
-        If int or float: number of wavelength bins between 1100–1300 Å (rest-frame).
-        If array: specifies the wavelength bin edges (assumed in Ångström).
+        If int or float: number of observed wavelength bins between 1100–1300 Å (rest-frame).
+        If array-like: specifies the wavelength bins directly in Ångström.
     damped : bool, optional
-        Whether to include the damping wing (Voigt profile). If False, uses Gaussian core only.
+        If True, include the damping wing using a Voigt profile. Otherwise, use only 
+        the Doppler core (Gaussian).
     verbose : bool, optional
-        If True, prints progress information every 10 cells.
+        If True, print progress every 10 steps. Also prints skewer number if multiple
+        skewers are processed.
 
     Returns
     -------
     tau_lambda : ndarray
-        Total Lyman-alpha optical depth at each wavelength bin.
+        Optical depth as a function of observed wavelength. Shape is (N_lambda,) for single skewer
+        or (N_skewers, N_lambda) for multiple skewers.
     lambda_obs : Quantity
-        Observed wavelength array corresponding to the computed τ values (in Å).
+        Observed wavelength grid corresponding to `tau_lambda`, in Ångström.
     """
     if cosmo is None:
         cosmo = cosmology.cosmo
@@ -105,7 +113,24 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76
     except:
         temp *= u.K
         print('The temperature is assumed to be in Kelvin unit.')
-    
+    if np.array(temp.value).ndim==0:
+        temp = temp*np.ones_like(dn)
+
+    if xHI.ndim==2:
+        tau_lambda_list = []
+        n_skewer = xHI.shape[0]
+        for j in range(n_skewer):
+            if verbose:
+                print(f"Skewer Number {j+1}/{n_skewer}")
+            tau_lambdaj, lambda_obsj = optical_depth_lyA_along_skewer(
+                                            z_source, xHI[j,:], 
+                                            dn[j,:] if dn.ndim==2 else dn, 
+                                            dr, temp=temp[j,:] if temp.ndim==2 else temp, 
+                                            X_H=X_H, cosmo=cosmo, f_alpha=f_alpha,
+                                            lambda_bins=lambda_bins, damped=damped, verbose=False)
+            tau_lambda_list.append(tau_lambdaj)
+        return np.array(tau_lambda_list), lambda_obsj
+
     r_src = cosmo.comoving_distance(z_source)
     r_arr = r_src-dr*(np.arange(xHI.shape[0])+1)
     z_arr = cdist_to_z(r_arr, cosmo=cosmo)
@@ -127,22 +152,20 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76
     # sigma_T = const.sigma_T.to('cm^2')
     # sigma_0 = (np.sqrt(3 * np.pi * sigma_T / 8) * 1e-8 * lambda_0 * f_alpha).to('cm^2')
 
-    # Doppler parameter
-    bpar = np.sqrt(2 * kboltz * temp / m_H).to('cm/s')
-    # Cpar = (sigma_0 * const.c).to('cm^3/s')
-
-    # Optical depth normalization
-    prefactor = (np.sqrt(np.pi) * const.e.esu**2 * f_alpha * lambda_0) / (const.m_e * const.c * bpar)
-    prefactor = prefactor.to('cm^2')  # absorption cross-section
-    Cpar = prefactor*bpar
-
-    # Convert wavelength grid to redshift grid
-    # z_grid = lambda_obs / lambda_0 - 1
     tau_lambda = np.zeros_like(lambda_obs.value)
-
     n_arr = len(z_arr)
     for i in tqdm(range(n_arr)):
         z = z_arr[i]
+
+        # Doppler parameter
+        bpar = np.sqrt(2 * kboltz * temp[i] / m_H).to('cm/s')
+        # Cpar = (sigma_0 * const.c).to('cm^3/s')
+
+        # Optical depth normalization
+        prefactor = (np.sqrt(np.pi) * const.e.esu**2 * f_alpha * lambda_0) / (const.m_e * const.c * bpar)
+        prefactor = prefactor.to('cm^2')  # absorption cross-section
+        Cpar = prefactor*bpar
+
         lam_rest = lambda_obs / (1 + z)
         u_i = ((lam_rest / lambda_0 - 1) * const.c / bpar).to('').value
         apar = (6.25e8 / u.s * lambda_0 / (4 * np.pi * bpar)).to('').value
