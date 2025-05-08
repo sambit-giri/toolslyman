@@ -51,7 +51,7 @@ def column_density_along_skewer(z_source, xHI, dn, dr, X_H=0.76, cosmo=None):
     N_HI = (1+z_source)**(-4)*np.cumsum(nHI_comving*dr, axis=1)
     return N_HI
 
-def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76, cosmo=None, f_alpha=0.4164, lambda_bins=1000, damped=True, verbose=False):
+def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76, cosmo=None, f_alpha=0.4164, lambda_bins=1000, xHI_limit=1e-4, damped=True, verbose=False):
     """
     Compute the Lyman-alpha optical depth (τ) along one or more cosmological skewers.
 
@@ -81,6 +81,9 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76
     lambda_bins : int or ndarray, optional
         If int or float: number of observed wavelength bins between 1100–1300 Å (rest-frame).
         If array-like: specifies the wavelength bins directly in Ångström.
+    xHI_limit : float, optional
+        A limit on neutral fraction values to remove residual neutral hydrogen 
+        present due to floating point error. Default is 0.0001.
     damped : bool, optional
         If True, include the damping wing using a Voigt profile. Otherwise, use only 
         the Doppler core (Gaussian).
@@ -115,6 +118,8 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76
         print('The temperature is assumed to be in Kelvin unit.')
     if np.array(temp.value).ndim==0:
         temp = temp*np.ones_like(dn)
+
+    xHI[xHI<=xHI_limit] = 0.
 
     if xHI.ndim==2:
         tau_lambda_list = []
