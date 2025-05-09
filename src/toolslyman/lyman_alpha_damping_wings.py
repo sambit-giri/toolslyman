@@ -51,7 +51,7 @@ def column_density_along_skewer(z_source, xHI, dn, dr, X_H=0.76, cosmo=None):
     N_HI = (1+z_source)**(-4)*np.cumsum(nHI_comving*dr, axis=1)
     return N_HI
 
-def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76, cosmo=None, f_alpha=0.4164, lambda_bins=1000, xHI_limit=1e-4, damped=True, verbose=False):
+def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76, cosmo=None, f_alpha=0.4164, lambda_bins=1000, xHI_limit=1e-8, damped=True, verbose=False):
     """
     Compute the Lyman-alpha optical depth (τ) along one or more cosmological skewers.
 
@@ -83,7 +83,7 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76
         If array-like: specifies the wavelength bins directly in Ångström.
     xHI_limit : float, optional
         A limit on neutral fraction values to remove residual neutral hydrogen 
-        present due to floating point error. Default is 0.0001.
+        present due to floating point error. Default is 1e-8.
     damped : bool, optional
         If True, include the damping wing using a Voigt profile. Otherwise, use only 
         the Doppler core (Gaussian).
@@ -134,57 +134,65 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76
                                             X_H=X_H, cosmo=cosmo, f_alpha=f_alpha,
                                             lambda_bins=lambda_bins, damped=damped, verbose=False)
             tau_lambda_list.append(tau_lambdaj)
-        return np.array(tau_lambda_list), lambda_obsj
-
-    r_src = cosmo.comoving_distance(z_source)
-    r_arr = r_src-dr*(np.arange(xHI.shape[0])+1)
-    z_arr = cdist_to_z(r_arr, cosmo=cosmo)
+        return np.array(tau_lambda_list), lambda_obsj    
     
     lambda_0 = 1215.67*u.AA
-    if isinstance(lambda_bins,(int,float)):
-        lambda_obs = np.linspace(1100, 1300, lambda_bins)*u.AA*(1+z_source)
-    else:
-        try:
-            lambda_obs = lambda_bins.to('AA')
-        except:
-            lambda_obs = lambda_bins*u.AA
-            print('The wavelength bins (lambda_bins) provided are assumed to be in Angstrom unit.')
+    # if isinstance(lambda_bins,(int,float)):
+    #     lambda_obs = np.linspace(1100, 1300, lambda_bins)*u.AA*(1+z_source)
+    # else:
+    #     try:
+    #         lambda_obs = lambda_bins.to('AA')
+    #     except:
+    #         lambda_obs = lambda_bins*u.AA
+    #         print('The wavelength bins (lambda_bins) provided are assumed to be in Angstrom unit.')
 
+    r_src = cosmo.comoving_distance(z_source)
+    r_arr = r_src-dr*(np.arange(-xHI.shape[0],xHI.shape[0]))
+    z_arr = cdist_to_z(r_arr, cosmo=cosmo)
+    lambda_obs = lambda_0*(1+z_arr)
+
+    # dz_lam = (np.gradient(lambda_obs)[0]/lambda_0).value
+    # z_lam  = np.arange(z_source,z_arr.min(),-dz_lam)
+    # r_lam  = cosmo.comoving_distance(z_lam)
+
+    # dn_fit = interp1d(z_arr, dn, kind='linear', fill_value='extrapolate')
+    # xHI_fit = interp1d(z_arr, xHI, kind='nearest-up', fill_value='extrapolate')
+    # temp_fit = interp1d(z_arr, temp.to('K').value, kind='linear', fill_value='extrapolate')
+    # dn_lam = dn_fit(z_lam)
+    # xHI_lam = xHI_fit(z_lam)
+    # temp_lam = temp_fit(z_lam)*u.K
 
     # Setup physical constants
     m_H = const.m_p.to('g')
     kboltz = const.k_B.to('erg/K')
-    # sigma_T = const.sigma_T.to('cm^2')
-    # sigma_0 = (np.sqrt(3 * np.pi * sigma_T / 8) * 1e-8 * lambda_0 * f_alpha).to('cm^2')
 
-    tau_lambda = np.zeros_like(lambda_obs.value)
-    n_arr = len(z_arr)
-    for i in tqdm(range(n_arr)):
-        z = z_arr[i]
+    # Doppler parameter
+    bpar = np.sqrt(2 * kboltz * temp / m_H).to('cm/s')
+    # bpar = np.sqrt(2 * kboltz * temp_lam / m_H).to('cm/s')
 
-        # Doppler parameter
-        bpar = np.sqrt(2 * kboltz * temp[i] / m_H).to('cm/s')
-        # Cpar = (sigma_0 * const.c).to('cm^3/s')
+    # Optical depth normalization
+    prefactor = (np.sqrt(np.pi) * const.e.esu**2 * f_alpha * lambda_0) / (const.m_e * const.c * bpar)
+    prefactor = prefactor.to('cm^2')  # absorption cross-section
+    Cpar = prefactor*bpar
 
-        # Optical depth normalization
-        prefactor = (np.sqrt(np.pi) * const.e.esu**2 * f_alpha * lambda_0) / (const.m_e * const.c * bpar)
-        prefactor = prefactor.to('cm^2')  # absorption cross-section
-        Cpar = prefactor*bpar
+    # lam_rest = lambda_obs / (1 + z_arr[:,None])
+    # lam_rest = lambda_obs / (1 + z_lam[:,None])
+    lam_rest = lambda_obs / (1 + z_arr[-xHI.shape[0]:,None])
+    u_i = ((lam_rest / lambda_0 - 1) * const.c / bpar[:,None]).to('').value
+    apar = (6.25e8 / u.s * lambda_0 / (4 * np.pi * bpar)).to('').value
+    if damped:
+        H_a = special.voigt_profile(u_i, np.sqrt(0.5), apar[:,None])
+    else:
+        H_a = np.exp(-u_i ** 2) / np.sqrt(np.pi)
 
-        lam_rest = lambda_obs / (1 + z)
-        u_i = ((lam_rest / lambda_0 - 1) * const.c / bpar).to('').value
-        apar = (6.25e8 / u.s * lambda_0 / (4 * np.pi * bpar)).to('').value
-        if (i+1)%10==0 and verbose:
-            print(f"{i+1}/{n_arr} | Lyman-alpha wavelength={(lambda_0*(1+z)).to('AA').value:.1f}AA at z={z:.3f}")
-        if damped:
-            H_a = special.voigt_profile(u_i, np.sqrt(0.5), apar)
-        else:
-            H_a = np.exp(-u_i ** 2) / np.sqrt(np.pi)
-
-        nH = (1 + dn[i]) * (X_H * cosmo.Ob0 * cosmo.critical_density0 / (const.m_p + const.m_e)).to('1/cm^3')
-        nHI = xHI[i] * nH
-        dN_HI = nHI * dr
-        tau_0 = (Cpar * dN_HI / bpar).to('').value
-        tau_lambda += tau_0 * H_a
+    nH = (1 + dn) * (X_H * cosmo.Ob0 * cosmo.critical_density0 / (const.m_p + const.m_e)).to('1/cm^3')
+    nHI = xHI * nH
+    dN_HI = nHI * dr
+    # nH = (1 + dn_lam) * (X_H * cosmo.Ob0 * cosmo.critical_density0 / (const.m_p + const.m_e)).to('1/cm^3')
+    # nHI = xHI_lam * nH
+    # dN_HI = nHI * np.abs(np.gradient(r_lam))
+    tau_0 = (Cpar * dN_HI / bpar).to('').value
+    tau_lambda_arr = tau_0[:,None] * H_a
+    tau_lambda = np.sum(tau_lambda_arr, axis=0)
 
     return tau_lambda, lambda_obs
