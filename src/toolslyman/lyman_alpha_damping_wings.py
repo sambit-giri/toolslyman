@@ -51,13 +51,13 @@ def column_density_along_skewer(z_source, xHI, dn, dr, X_H=0.76, cosmo=None):
     N_HI = (1+z_source)**(-4)*np.cumsum(nHI_comving*dr, axis=1)
     return N_HI
 
-def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76, cosmo=None, f_alpha=0.4164, lambda_bins=1000, xHI_limit=1e-8, damped=True, verbose=False):
+def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr=None, z_arr=None, temp=1e4*u.K, X_H=0.76, cosmo=None, f_alpha=0.4164, damped=True, verbose=False):
     """
     Compute the Lyman-alpha optical depth (τ) along one or more cosmological skewers.
 
     This function supports both single and multiple skewers (2D arrays). The source is 
-    assumed to be at the origin or index 0 of the skewer array. Use `np.roll` to adjust
-    the line-of-sight skewer if necessary.
+    assumed to be at the origin or index 0 of the skewer array if dr is provided. 
+    Use `np.roll` to adjust the line-of-sight skewer if necessary. 
 
     Parameters
     ----------
@@ -69,6 +69,8 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76
         Baryon overdensity field (δ = ρ/ρ̄ - 1). Shape must match `xHI`.
     dr : Quantity or float
         Comoving length of each cell along the skewer (e.g., in Mpc or cm).
+    z_arr : ndarray
+        Redshift array corresponding to the skewer.
     temp : Quantity or ndarray, optional
         Gas temperature in Kelvin. Can be scalar, 1D, or 2D array matching shape of `xHI`.
         Default is 1e4 K.
@@ -78,12 +80,6 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76
         Cosmology instance to use. If None, uses the default from `toolslyman`.
     f_alpha : float, optional
         Oscillator strength for the Lyman-alpha transition. Default is 0.4164.
-    lambda_bins : int or ndarray, optional
-        If int or float: number of observed wavelength bins between 1100–1300 Å (rest-frame).
-        If array-like: specifies the wavelength bins directly in Ångström.
-    xHI_limit : float, optional
-        A limit on neutral fraction values to remove residual neutral hydrogen 
-        present due to floating point error. Default is 1e-8.
     damped : bool, optional
         If True, include the damping wing using a Voigt profile. Otherwise, use only 
         the Doppler core (Gaussian).
@@ -99,6 +95,8 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76
     lambda_obs : Quantity
         Observed wavelength grid corresponding to `tau_lambda`, in Ångström.
     """
+    assert dr is not None or z_arr is not None 
+
     if cosmo is None:
         cosmo = cosmology.cosmo
 
@@ -119,8 +117,6 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76
     if np.array(temp.value).ndim==0:
         temp = temp*np.ones_like(dn)
 
-    xHI[xHI<=xHI_limit] = 0.
-
     if xHI.ndim==2:
         tau_lambda_list = []
         n_skewer = xHI.shape[0]
@@ -130,37 +126,21 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76
             tau_lambdaj, lambda_obsj = optical_depth_lyA_along_skewer(
                                             z_source, xHI[j,:], 
                                             dn[j,:] if dn.ndim==2 else dn, 
-                                            dr, temp=temp[j,:] if temp.ndim==2 else temp, 
+                                            dr, z_arr, 
+                                            temp=temp[j,:] if temp.ndim==2 else temp, 
                                             X_H=X_H, cosmo=cosmo, f_alpha=f_alpha,
-                                            lambda_bins=lambda_bins, damped=damped, verbose=False)
+                                            damped=damped, verbose=False)
             tau_lambda_list.append(tau_lambdaj)
         return np.array(tau_lambda_list), lambda_obsj    
     
     lambda_0 = 1215.67*u.AA
-    # if isinstance(lambda_bins,(int,float)):
-    #     lambda_obs = np.linspace(1100, 1300, lambda_bins)*u.AA*(1+z_source)
-    # else:
-    #     try:
-    #         lambda_obs = lambda_bins.to('AA')
-    #     except:
-    #         lambda_obs = lambda_bins*u.AA
-    #         print('The wavelength bins (lambda_bins) provided are assumed to be in Angstrom unit.')
-
     r_src = cosmo.comoving_distance(z_source)
-    r_arr = r_src-dr*(np.arange(-xHI.shape[0],xHI.shape[0]))
-    z_arr = cdist_to_z(r_arr, cosmo=cosmo)
+    if z_arr is None:
+        r_arr = r_src-dr*(np.arange(-xHI.shape[0],xHI.shape[0]))
+        z_arr = cdist_to_z(r_arr, cosmo=cosmo)
+    else:
+        r_arr = cosmo.comoving_distance(z_arr)
     lambda_obs = lambda_0*(1+z_arr)
-
-    # dz_lam = (np.gradient(lambda_obs)[0]/lambda_0).value
-    # z_lam  = np.arange(z_source,z_arr.min(),-dz_lam)
-    # r_lam  = cosmo.comoving_distance(z_lam)
-
-    # dn_fit = interp1d(z_arr, dn, kind='linear', fill_value='extrapolate')
-    # xHI_fit = interp1d(z_arr, xHI, kind='nearest-up', fill_value='extrapolate')
-    # temp_fit = interp1d(z_arr, temp.to('K').value, kind='linear', fill_value='extrapolate')
-    # dn_lam = dn_fit(z_lam)
-    # xHI_lam = xHI_fit(z_lam)
-    # temp_lam = temp_fit(z_lam)*u.K
 
     # Setup physical constants
     m_H = const.m_p.to('g')
@@ -175,8 +155,6 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76
     prefactor = prefactor.to('cm^2')  # absorption cross-section
     Cpar = prefactor*bpar
 
-    # lam_rest = lambda_obs / (1 + z_arr[:,None])
-    # lam_rest = lambda_obs / (1 + z_lam[:,None])
     lam_rest = lambda_obs / (1 + z_arr[-xHI.shape[0]:,None])
     u_i = ((lam_rest / lambda_0 - 1) * const.c / bpar[:,None]).to('').value
     apar = (6.25e8 / u.s * lambda_0 / (4 * np.pi * bpar)).to('').value
@@ -188,9 +166,6 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr, temp=1e4*u.K, X_H=0.76
     nH = (1 + dn) * (X_H * cosmo.Ob0 * cosmo.critical_density0 / (const.m_p + const.m_e)).to('1/cm^3')
     nHI = xHI * nH
     dN_HI = nHI * dr
-    # nH = (1 + dn_lam) * (X_H * cosmo.Ob0 * cosmo.critical_density0 / (const.m_p + const.m_e)).to('1/cm^3')
-    # nHI = xHI_lam * nH
-    # dN_HI = nHI * np.abs(np.gradient(r_lam))
     tau_0 = (Cpar * dN_HI / bpar).to('').value
     tau_lambda_arr = tau_0[:,None] * H_a
     tau_lambda = np.sum(tau_lambda_arr, axis=0)
