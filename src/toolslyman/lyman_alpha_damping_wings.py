@@ -51,7 +51,7 @@ def column_density_along_skewer(z_source, xHI, dn, dr, X_H=0.76, cosmo=None):
     N_HI = (1+z_source)**(-4)*np.cumsum(nHI_comving*dr, axis=1)
     return N_HI
 
-def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr=None, z_arr=None, temp=1e4*u.K, X_H=0.76, cosmo=None, f_alpha=0.4164, damped=True, verbose=False):
+def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr=None, z_arr=None, temp=1e4*u.K, X_H=0.76, cosmo=None, f_alpha=0.4164, damped=True, verbose=False, use_compute_spectrum=True):
     """
     Compute the Lyman-alpha optical depth (τ) along one or more cosmological skewers.
 
@@ -131,7 +131,7 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr=None, z_arr=None, temp=
                                             X_H=X_H, cosmo=cosmo, f_alpha=f_alpha,
                                             damped=damped, verbose=False)
             tau_lambda_list.append(tau_lambdaj)
-        return np.array(tau_lambda_list), lambda_obsj    
+        return np.array(tau_lambda_list), lambda_obsj   
     
     lambda_0 = 1215.67*u.AA
     r_src = cosmo.comoving_distance(z_source)
@@ -141,6 +141,24 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr=None, z_arr=None, temp=
     else:
         r_arr = cosmo.comoving_distance(z_arr)
     lambda_obs = lambda_0*(1+z_arr)
+
+    if use_compute_spectrum:
+        # Set up required velocity grid in km/s
+        z_grid = z_arr[-xHI.shape[0]:]
+        v_grid = ((lambda_obs / lambda_0 - 1) * const.c).to('km/s').value
+
+        v_in = ((lambda_0 * (1 + z_grid) / lambda_0 - 1) * const.c).to('km/s').value
+        v_out = v_grid
+
+        m_H = const.m_p.to('g').value
+        lambda0_val = lambda_0.to('angstrom').value
+        temp_val = temp.to('K').value
+        cdens = (xHI * (1 + dn) * (X_H * cosmo.Ob0 * cosmo.critical_density0 / const.m_p) * dr).to('1/cm2').value
+
+        tau_lambda = compute_spectrum(v_in, v_out, cdens, temp_val, lambda0_val,
+                                    f_alpha, m_H, damped, periodic=False) 
+        
+        return tau_lambda, lambda_obs
 
     # Setup physical constants
     m_H = const.m_p.to('g')
@@ -159,7 +177,7 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr=None, z_arr=None, temp=
     u_i = ((lam_rest / lambda_0 - 1) * const.c / bpar[:,None]).to('').value
     apar = (6.25e8 / u.s * lambda_0 / (4 * np.pi * bpar)).to('').value
     if damped:
-        H_a = special.voigt_profile(u_i, np.sqrt(0.5), apar[:,None])
+        H_a = special.voigt_profile(u_i, np.sqrt(0.5), apar[:,None]/np.sqrt(np.log(2))) * np.sqrt(np.pi)
     else:
         H_a = np.exp(-u_i ** 2) / np.sqrt(np.pi)
 
@@ -171,3 +189,85 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr=None, z_arr=None, temp=
     tau_lambda = np.sum(tau_lambda_arr, axis=0)
 
     return tau_lambda, lambda_obs
+
+def compute_spectrum(xvel_in,xvel_out,cdens,temp,lambda0,fvalue,mass,damped,periodic):
+    '''
+    Returns optical depth array
+
+    xvel_in  : velocity (km/s) of array element (x-coordinate of spectrum)
+    xvel_out : velocity (km/s) of array element (x-coordinate of spectrum)
+    cdens    : column density (particles/cm^2)
+    temp     : temperature (K)
+    lambda0  : rest wavelength (Å)
+    fvalue   : oscillator strength
+    mass     : mass of atom (g)
+    
+    '''
+  
+    if damped:
+        #    IF round(lambda0) NE 1216. THEN $
+        #      message,'Damping wings only possible for HI Ly-alpha!'
+        gf_Lya = 0.8323
+        g2_Lya = 8.
+        # Natural line-width (km/s)
+        v_Lya = 0.6679e-5 * gf_Lya / (g2_Lya*(lambda0*1.e-8)*4.*np.pi) 
+        v_lya = 0.00606076 # in km/s. Note that the value above is incorrect
+        print(' including a damping wing')
+        
+        
+    minbother = 1.e-2               # Min. max. optical depth for inclusion
+        
+    c = 2.9979e10                   # cm/s
+    kboltz = 1.3807e-16             # erg/K
+    sigma_T = 6.6525e-25            # cm^2
+    
+    # Cross section in cm^2: 
+    sigma_0 = np.sqrt(3.*np.pi*sigma_T/8.) * 1.e-8 * lambda0 * fvalue
+    
+    Tpar = 2.0 * kboltz / mass      # erg/K/g
+    Cpar = sigma_0 * c              # cm^3/s
+    
+    nveloc_in = xvel_in.size
+    nveloc_out = xvel_out.size
+    nveloc1_out = nveloc_out - 1
+    
+    tau = np.zeros(nveloc_out)
+    tauv = np.zeros(nveloc_out)
+    
+    taumin = minbother / nveloc_in
+    
+    bpar_inv = 1. / np.sqrt(Tpar * temp) # s/cm
+    tauc = Cpar * cdens * bpar_inv  # Central optical depth
+    bpar_inv = bpar_inv * 1.e5      # s/km
+    
+    if damped: apar = v_lya * bpar_inv
+    if periodic:
+        boxkms  = max(xvel_in)
+        boxkms2 = 0.5*boxkms
+        
+    for i in range(nveloc_in):
+        if tauc[i] >= taumin:
+            vpar = abs(xvel_out - xvel_in[i])
+            if periodic:
+                nn = np.where(vpar > boxkms2)
+                while (nn.size > 0):
+                    print,' count = ',nn.size
+                    vpar[nn]=abs(vpar[nn]-boxkms)
+                    nn = np.where(vpar > boxkms2)
+                    
+            vpar = vpar * bpar_inv[i]
+            if damped:
+                # The voigt_profile function from scipy and the voigt function
+                # from IDL map according to
+                #    voigt(gamma,x)/sqrt(pi)=voigt_profile(x,sqrt(0.5),gamma).
+                # See
+                # https://www.nv5geospatialsoftware.com/docs/VOIGT.html and
+                # https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.voigt_profile.html
+                #dtau = tauc[i] * voigt(apar[i],vpar) / np.sqrt(np.pi)
+                dtau = tauc[i] * special.voigt_profile(vpar,np.sqrt(0.5),apar[i])
+            else:
+                dtau = tauc[i] * np.exp(-vpar*vpar) / np.sqrt(np.pi)
+                                
+            tau = tau + dtau
+
+    return tau
