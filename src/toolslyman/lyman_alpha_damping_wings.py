@@ -8,20 +8,23 @@ from .constants import *
 from . import cosmology
 from .cosmology_calc import *
 
-def column_density_along_skewer(z_source, xHI, dn, dr, X_H=0.76, cosmo=None):
+def column_density_along_skewer(z_source, xHI, dn, dr, z_arr=None, X_H=0.76, cosmo=None):
     """
-    Compute the cumulative neutral hydrogen column density along a skewer.
+    Compute the cumulative proper neutral hydrogen column density along a skewer.
 
     Parameters
     ----------
     z_source : float
         Redshift of the background source.
     xHI : ndarray
-        Neutral hydrogen fraction along the skewer.
+        Neutral hydrogen fraction along the skewer. Index 0 is assumed nearest the source.
     dn : ndarray
         Overdensity field (δ = ρ/ρ̄ - 1).
     dr : Quantity or float
         Comoving cell length (can be with or without units).
+    z_arr : ndarray, optional
+        Redshift of each cell along the skewer. If None, computed from `z_source` and `dr`
+        assuming uniform comoving cell spacing starting at the source (index 0).
     X_H : float, optional
         Hydrogen mass fraction. Default is 0.76.
     cosmo : astropy.cosmology, optional
@@ -29,26 +32,35 @@ def column_density_along_skewer(z_source, xHI, dn, dr, X_H=0.76, cosmo=None):
 
     Returns
     -------
-    N_HI : ndarray
-        Comoving neutral hydrogen column density along the skewer (in cm^-2).
+    N_HI : Quantity
+        Cumulative proper neutral hydrogen column density along the skewer (in cm^-2).
     """
     if cosmo is None:
         cosmo = cosmology.cosmo
 
     if dn.min()>1:
         dn = dn/dn.mean()-1
-    
+
     try:
         dr = dr.to('cm')
     except:
         dr *= u.Mpc
         print('The comoving cell distance (dr) is assumed to be in Mpc unit.')
 
-    nH = (1+dn)*(X_H*cosmo.Ob0*cosmo.critical_density0/(const.m_p+const.m_e)).to('1/cm^3')
-    nHI_comving = xHI*nH
-    if nHI_comving.ndim==1:
-        nHI_comving = nHI_comving[None,:]
-    N_HI = (1+z_source)**(-4)*np.cumsum(nHI_comving*dr, axis=1)
+    if z_arr is None:
+        n_cells = xHI.shape[-1]
+        r_src = cosmo.comoving_distance(z_source)
+        r_arr = r_src - dr*np.arange(n_cells)
+        z_arr = cdist_to_z(r_arr, cosmo=cosmo)
+
+    # Proper-frame conversion, applied per cell at its own redshift: comoving density
+    # scales as (1+z)^3 in proper units and the proper path length as dr/(1+z), giving
+    # a net (1+z)^2 factor (see the cdens calculation in optical_depth_lyA_along_skewer).
+    nH = (X_H*cosmo.Ob0*cosmo.critical_density0/const.m_p).to('1/cm^3')
+    nHI_proper = xHI*(1+dn)*(1+z_arr)**2*nH
+    if nHI_proper.ndim==1:
+        nHI_proper = nHI_proper[None,:]
+    N_HI = np.cumsum(nHI_proper*dr, axis=1)
     return N_HI
 
 def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr=None, z_arr=None, temp=1e4*u.K, vpec=None, X_H=0.76, cosmo=None, f_alpha=0.4164, damped=True, verbose=False):
