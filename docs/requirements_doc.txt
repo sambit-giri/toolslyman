@@ -1,5 +1,6 @@
 ipython
 nbsphinx
+nbsphinx_link
 numpydoc
 sphinx-rtd-theme
 sphinx_readable_theme

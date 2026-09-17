@@ -12,18 +12,19 @@
 #
 import os
 import sys
+from importlib.metadata import version as _pkg_version
 sys.path.insert(0, os.path.abspath('../src/'))
 
 #import sphinx_bootstrap_theme
 
 # -- Project information -----------------------------------------------------
 
-project = 'simple_python_package_template'
-copyright = '2020, Sambit Giri'
+project = 'toolslyman'
+copyright = '2022, Sambit Giri'
 author = 'Sambit Giri'
 
 # The full version, including alpha/beta/rc tags
-version = release = '2.1'
+version = release = _pkg_version('toolslyman')
 
 
 # -- General configuration ---------------------------------------------------
@@ -49,8 +50,14 @@ extensions = [
     "sphinx.ext.autosectionlabel",
     "numpydoc",
     "nbsphinx",
+    "nbsphinx_link",
     #"IPython.sphinxext.ipython_console_highlighting",
 ]
+
+# The example notebooks already contain real, pre-computed outputs; don't
+# re-execute them during the doc build (avoids needing the full scientific
+# stack, and long-running cells, in CI).
+nbsphinx_execute = "never"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['templates']

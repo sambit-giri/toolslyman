@@ -6,7 +6,11 @@ We highly recommend the use of a virtual environement. It helps to keep dependen
 
 The dependencies should be installed automatically during the installation process. If they fail for some reason, you can install them manually before installing the package. The list of required packages can be found in the *requirements.txt* file present in the root directory.
 
-For a standard non-editable installation use::
+The package is available on `PyPI <https://pypi.org/project/toolslyman/>`_. To install the latest released version, run::
+
+    pip install toolslyman
+
+To install the latest development version directly from GitHub instead, use::
 
     pip install git+https://github.com/sambit-giri/toolslyman.git [--user]
 
