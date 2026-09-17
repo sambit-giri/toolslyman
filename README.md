@@ -12,14 +12,15 @@ A python package to study lyman-alpha photons in our Universe. More documentatio
 
 ## Package details
 
-The package provides modules to model transmission of lyman-alpha photons in cosmological volumes.
-
-## EXAMPLES
-
-Tutorial notebooks are in the [examples](https://github.com/sambit-giri/toolslyman/tree/main/examples) folder (also linked from the [tutorials](https://sambit-giri.github.io/toolslyman/tutorials.html) page of the documentation):
-
-* [`Lyman_alpha_damping_wing.ipynb`](https://github.com/sambit-giri/toolslyman/blob/main/examples/Lyman_alpha_damping_wing.ipynb) — modelling the Lyman-alpha damping wing along cosmological skewers, both numerically and with the Miralda-Escude (1998) analytic formula.
-* [`Photometric_IGM_tomography.ipynb`](https://github.com/sambit-giri/toolslyman/blob/main/examples/Photometric_IGM_tomography.ipynb) — reconstructing 2D maps of the IGM Lyman-alpha transmission from mock photometric observations of background galaxies, following [Giri, Kakiichi, Bianco & Meerburg (2025)](https://arxiv.org/abs/2505.06350).
+`toolslyman` provides modules to model and analyze the transmission of Lyman-alpha
+photons through the intergalactic medium (IGM) during and after the epoch of
+reionization. This includes the Lyman-alpha forest transmission (via the
+fluctuating Gunn-Peterson approximation and full radiative transfer), the
+Lyman-alpha damping wing from neutral hydrogen (both numerically along
+cosmological skewers and via closed-form analytic formulas), photometric IGM
+tomography for mapping residual neutral islands from mock or real
+observations, toy models of reionization topology, and supporting cosmological
+and observational utilities.
 
 ## INSTALLATION
 
@@ -50,7 +51,14 @@ The dependencies should be installed automatically during the installation proce
 For testing, one can use [pytest](https://docs.pytest.org/en/stable/). To run all the test script, run the either of the following::
 
     python -m pytest tests
-    
+
+## EXAMPLES
+
+Tutorial notebooks are in the [examples](https://github.com/sambit-giri/toolslyman/tree/main/examples) folder (also linked from the [tutorials](https://sambit-giri.github.io/toolslyman/tutorials.html) page of the documentation):
+
+* [`Lyman_alpha_damping_wing.ipynb`](https://github.com/sambit-giri/toolslyman/blob/main/examples/Lyman_alpha_damping_wing.ipynb) — modelling the Lyman-alpha damping wing along cosmological skewers, both numerically and with the Miralda-Escude (1998) analytic formula.
+* [`Photometric_IGM_tomography.ipynb`](https://github.com/sambit-giri/toolslyman/blob/main/examples/Photometric_IGM_tomography.ipynb) — reconstructing 2D maps of the IGM Lyman-alpha transmission from mock photometric observations of background galaxies, following [Giri, Kakiichi, Bianco & Meerburg (2025)](https://arxiv.org/abs/2505.06350).
+
 ## CONTRIBUTING
 
 If you find any bugs or unexpected behavior in the code, please feel free to open a [Github issue](https://github.com/sambit-giri/toolslyman/issues). The issue page is also good if you seek help or have suggestions for us. For more details, please see [here](https://sambit-giri.github.io/toolslyman/contributing.html).
