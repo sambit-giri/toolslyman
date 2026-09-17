@@ -350,9 +350,15 @@ def _damping_wing_spectrum(z_grid, z_obs, cdens, temp, lambda0, fvalue, mass, da
             x = vpar * bpar_inv_kms[i]
             if damped:
                 apar = v_lya * bpar_inv_kms[i]
-                # See compute_spectrum() docstring: voigt_profile(x,sqrt(0.5),gamma)*sqrt(pi)
-                # is the standard Voigt-Hjerting function H(a,x).
-                dtau = tauc[i] * special.voigt_profile(x, np.sqrt(0.5), apar) * np.sqrt(np.pi)
+                # NOTE: no extra sqrt(pi) here -- see compute_spectrum()'s docstring:
+                # voigt_profile(x,sqrt(0.5),gamma)*sqrt(pi) is the standard Voigt-Hjerting
+                # H(a,x), but sigma_0 above (sqrt(3*pi*sigma_T/8)*lambda0*fvalue) is already
+                # sqrt(pi) times the textbook line-center cross section sqrt(pi)*e^2*f*lambda/(m_e*c*b),
+                # so tauc is already sqrt(pi) too large relative to H(a,x)'s normalization.
+                # compute_spectrum() uses the raw (un-rescaled) voigt_profile() output for
+                # exactly this reason; multiplying by sqrt(pi) here double-counts it and
+                # inflates the wing by a factor of sqrt(pi) (~1.77x).
+                dtau = tauc[i] * special.voigt_profile(x, np.sqrt(0.5), apar)
                 # Exact-cross-section correction (Miralda-Escude 1998, Eq. A1): restores the
                 # (omega/omega_alpha)^4 numerator and (omega/omega_alpha)^6 denominator terms
                 # dropped by the narrow-line Voigt-Hjerting approximation.
