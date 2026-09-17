@@ -47,9 +47,4 @@ For testing, one can use [pytest](https://docs.pytest.org/en/stable/). To run al
 ## CONTRIBUTING
 
 If you find any bugs or unexpected behavior in the code, please feel free to open a [Github issue](https://github.com/sambit-giri/toolslyman/issues). The issue page is also good if you seek help or have suggestions for us. For more details, please see [here](https://sambit-giri.github.io/toolslyman/contributing.html).
-
-## CREDIT
-
-
-    This package uses the template provided at https://github.com/sambit-giri/SimplePythonPackageTemplate/ 
     
