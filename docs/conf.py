@@ -96,6 +96,10 @@ napoleon_use_ivar = True
 napoleon_use_rtype = False
 napoleon_use_param = False
 
+# Don't auto-generate a per-class methods/attributes autosummary table; it
+# requires stub-file generation we don't have configured and just warns.
+numpydoc_class_members_toctree = False
+
 mathjax_path = (
     "http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
 )

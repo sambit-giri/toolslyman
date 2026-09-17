@@ -12,3 +12,4 @@ folder of the repository; more will be added over time.
    :caption: Examples:
 
    examples/lyman_alpha_damping_wing
+   examples/photometric_igm_tomography

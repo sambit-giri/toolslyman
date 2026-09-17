@@ -14,6 +14,13 @@ A python package to study lyman-alpha photons in our Universe. More documentatio
 
 The package provides modules to model transmission of lyman-alpha photons in cosmological volumes.
 
+## EXAMPLES
+
+Tutorial notebooks are in the [examples](https://github.com/sambit-giri/toolslyman/tree/main/examples) folder (also linked from the [tutorials](https://sambit-giri.github.io/toolslyman/tutorials.html) page of the documentation):
+
+* [`Lyman_alpha_damping_wing.ipynb`](https://github.com/sambit-giri/toolslyman/blob/main/examples/Lyman_alpha_damping_wing.ipynb) — modelling the Lyman-alpha damping wing along cosmological skewers, both numerically and with the Miralda-Escude (1998) analytic formula.
+* [`Photometric_IGM_tomography.ipynb`](https://github.com/sambit-giri/toolslyman/blob/main/examples/Photometric_IGM_tomography.ipynb) — reconstructing 2D maps of the IGM Lyman-alpha transmission from mock photometric observations of background galaxies, following [Giri, Kakiichi, Bianco & Meerburg (2025)](https://arxiv.org/abs/2505.06350).
+
 ## INSTALLATION
 
 The package is available on [PyPI](https://pypi.org/project/toolslyman/). To install the latest released version, run::
