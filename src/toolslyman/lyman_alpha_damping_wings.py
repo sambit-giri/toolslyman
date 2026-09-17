@@ -51,7 +51,7 @@ def column_density_along_skewer(z_source, xHI, dn, dr, X_H=0.76, cosmo=None):
     N_HI = (1+z_source)**(-4)*np.cumsum(nHI_comving*dr, axis=1)
     return N_HI
 
-def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr=None, z_arr=None, temp=1e4*u.K, vpec=None, X_H=0.76, cosmo=None, f_alpha=0.4164, damped=True, verbose=False, use_compute_spectrum=True):
+def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr=None, z_arr=None, temp=1e4*u.K, vpec=None, X_H=0.76, cosmo=None, f_alpha=0.4164, damped=True, verbose=False):
     """
     Compute the Lyman-alpha optical depth (τ) along one or more cosmological skewers.
 
@@ -76,9 +76,8 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr=None, z_arr=None, temp=
         Default is 1e4 K.
     vpec : Quantity or ndarray, optional
         Line-of-sight peculiar velocity of the gas in each cell (e.g., in km/s), positive
-        when receding from the observer. Shape must match `xHI`. Only used when
-        `use_compute_spectrum=True`. Default is None (no peculiar velocity, i.e. pure
-        Hubble flow).
+        when receding from the observer. Shape must match `xHI`. Default is None (no
+        peculiar velocity, i.e. pure Hubble flow).
     X_H : float, optional
         Hydrogen mass fraction. Default is 0.76.
     cosmo : astropy.cosmology.Cosmology, optional
@@ -142,8 +141,7 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr=None, z_arr=None, temp=
                                             temp=temp[j,:] if temp.ndim==2 else temp,
                                             vpec=vpec[j,:] if (vpec is not None and vpec.ndim==2) else vpec,
                                             X_H=X_H, cosmo=cosmo, f_alpha=f_alpha,
-                                            damped=damped, verbose=False,
-                                            use_compute_spectrum=use_compute_spectrum)
+                                            damped=damped, verbose=False)
             tau_lambda_list.append(tau_lambdaj)
         return np.array(tau_lambda_list), lambda_obsj
 
@@ -156,51 +154,20 @@ def optical_depth_lyA_along_skewer(z_source, xHI, dn, dr=None, z_arr=None, temp=
         r_arr = cosmo.comoving_distance(z_arr)
     lambda_obs = lambda_0*(1+z_arr)
 
-    if use_compute_spectrum:
-        z_grid = z_arr[-xHI.shape[0]:]
+    z_grid = z_arr[-xHI.shape[0]:]
 
-        m_H = const.m_p.to('g').value
-        lambda0_val = lambda_0.to('angstrom').value
-        temp_val = temp.to('K').value
-        vpec_val = vpec.to('km/s').value if vpec is not None else None
-        # Proper-frame column density: dr is comoving, but the proper density scales
-        # as (1+z)^3 and the proper path length as dr/(1+z), giving a net (1+z)^2
-        # conversion factor that must be applied at each cell's own redshift.
-        cdens = (xHI * (1 + dn) * (1 + z_grid)**2 *
-                 (X_H * cosmo.Ob0 * cosmo.critical_density0 / const.m_p) * dr).to('1/cm2').value
+    m_H = const.m_p.to('g').value
+    lambda0_val = lambda_0.to('angstrom').value
+    temp_val = temp.to('K').value
+    vpec_val = vpec.to('km/s').value if vpec is not None else None
+    # Proper-frame column density: dr is comoving, but the proper density scales
+    # as (1+z)^3 and the proper path length as dr/(1+z), giving a net (1+z)^2
+    # conversion factor that must be applied at each cell's own redshift.
+    cdens = (xHI * (1 + dn) * (1 + z_grid)**2 *
+             (X_H * cosmo.Ob0 * cosmo.critical_density0 / const.m_p) * dr).to('1/cm2').value
 
-        tau_lambda = _damping_wing_spectrum(z_grid, z_arr, cdens, temp_val, lambda0_val,
-                                             f_alpha, m_H, damped, vpec=vpec_val)
-
-        return tau_lambda, lambda_obs
-
-    # Setup physical constants
-    m_H = const.m_p.to('g')
-    kboltz = const.k_B.to('erg/K')
-
-    # Doppler parameter
-    bpar = np.sqrt(2 * kboltz * temp / m_H).to('cm/s')
-    # bpar = np.sqrt(2 * kboltz * temp_lam / m_H).to('cm/s')
-
-    # Optical depth normalization
-    prefactor = (np.sqrt(np.pi) * const.e.esu**2 * f_alpha * lambda_0) / (const.m_e * const.c * bpar)
-    prefactor = prefactor.to('cm^2')  # absorption cross-section
-    Cpar = prefactor*bpar
-
-    lam_rest = lambda_obs / (1 + z_arr[-xHI.shape[0]:,None])
-    u_i = ((lam_rest / lambda_0 - 1) * const.c / bpar[:,None]).to('').value
-    apar = (6.25e8 / u.s * lambda_0 / (4 * np.pi * bpar)).to('').value
-    if damped:
-        H_a = special.voigt_profile(u_i, np.sqrt(0.5), apar[:,None]/np.sqrt(np.log(2))) * np.sqrt(np.pi)
-    else:
-        H_a = np.exp(-u_i ** 2) / np.sqrt(np.pi)
-
-    nH = (1 + dn) * (X_H * cosmo.Ob0 * cosmo.critical_density0 / (const.m_p + const.m_e)).to('1/cm^3')
-    nHI = xHI * nH
-    dN_HI = nHI * dr
-    tau_0 = (Cpar * dN_HI / bpar).to('').value
-    tau_lambda_arr = tau_0[:,None] * H_a
-    tau_lambda = np.sum(tau_lambda_arr, axis=0)
+    tau_lambda = _damping_wing_spectrum(z_grid, z_arr, cdens, temp_val, lambda0_val,
+                                         f_alpha, m_H, damped, vpec=vpec_val)
 
     return tau_lambda, lambda_obs
 
